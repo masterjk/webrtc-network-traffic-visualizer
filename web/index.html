@@ -19,8 +19,6 @@
 
         var enc = new TextDecoder("utf-8");
 
-        var sdpOffer;
-
         function log(message) {
             let date = new Date().toISOString();
             console.log(`[${date}] ${message}`);
@@ -43,31 +41,43 @@
         }
 
         window.peerConnection = peerConnection = new RTCPeerConnection({ iceServers: [{
-            urls: ['stun:stun.l.google.com:19302']}]});
+            urls: ['stun:stun.l.google.com:19302']}
+        ]});
 
         peerConnection.onconnectionstatechange = (event) => {
-            debug && log("onconnectionstatechange", event);
+
+            document.getElementById("status").value = peerConnection.connectionState;
+
+            switch (peerConnection.connectionState) {
+            case 'new':
+                break;
+            case 'connecting':
+                let iceTransport = peerConnection.sctp?.transport.iceTransport;
+                if (iceTransport) {
+                    // iceTransport.onselectedcandidatepairchange = 
+                }
+                break;
+            }
+            debug && log("onconnectionstatechange");
+            debug && console.log(event);
         }
 
         peerConnection.onicecandidate = (event) => {
 
-            if (event.candidate === null && peerConnection.localDescription) {
+            if (event.candidate && event.candidate.type === "srflx" && peerConnection.localDescription) {
 
                 fetch('/sdp', {
                     method: 'post',
-                    body: JSON.stringify({"sdpOffer": sdpOffer.sdp}),
+                    body: JSON.stringify({"sdpOffer": peerConnection.localDescription.sdp}),
                     headers: {
                     'Content-Type': 'application/json',
                     }
                 }).then((response) => {
                     if (response.ok) {
                         response.json().then((json) => {
-                            debug && log("SDP Answer:\n\n", json.sessionDescription.sdp);
+                            debug && log("SDP Answer:\n\n" + json.sessionDescription.sdp);
                             let sdpAnswer = new RTCSessionDescription(json.sessionDescription);
                             peerConnection.setRemoteDescription(sdpAnswer);
-                            debug && log(peerConnection);
-
-                            document.getElementById("status").value = "Connected";
                         })
                     }
                 }).catch((e) => {
@@ -78,15 +88,22 @@
 
         peerConnection.onnegotiationneeded = (event) => {
             peerConnection.createOffer().then(function(desc) {
-                this.sdpOffer = desc;
-                debug && log("SDP Offer:\n\n", desc.sdp)
+                debug && log("SDP Offer:\n\n" + desc.sdp)
                 peerConnection.setLocalDescription(desc)
             }
         )};
 
         controlChannel = peerConnection.createDataChannel('control', { ordered: true, maxRetransmits: 0 });
         payloadChannel = peerConnection.createDataChannel('payload', { ordered: false, maxRetransmits: 0 });
-        
+
+        controlChannel.onopen = () => {
+            debug && log("[control] Data channel opened")
+        };
+
+        payloadChannel.onopen = () => {
+            debug && log("[payload] Data channel opened")
+        };
+
         payloadChannel.onmessage = (event) => {
             let obj = JSON.parse(enc.decode(event.data));
             let id = "id_" + obj.counter % (maxColumns * maxRows);

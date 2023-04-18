@@ -21,6 +21,7 @@
 
         function log(message) {
             let date = new Date().toISOString();
+            document.getElementById("logs").innerHTML += `[${date}] ${message}\n`;
             console.log(`[${date}] ${message}`);
         }
 
@@ -58,8 +59,7 @@
                 }
                 break;
             }
-            debug && log("onconnectionstatechange");
-            debug && console.log(event);
+            debug && log("onconnectionstatechange " + peerConnection.connectionState);
         }
 
         peerConnection.onicecandidate = (event) => {
@@ -176,6 +176,7 @@
             Bits per Second: <input type="text" id="bitsPerSecond" value="0" readonly class="readonly" />
         </div>
 
+        <textarea id="logs" cols="200" rows="40"></textarea>
     </div>
 
     <script>

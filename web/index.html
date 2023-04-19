@@ -23,6 +23,10 @@
             display: inline-block;
         }
 
+        table#container {
+            border: 1px #dedede solid;
+        }
+
         button {
             margin-left: 25px;
             padding: 10px;
@@ -57,7 +61,7 @@
         }
 
         input.value {
-            width: 60px;
+            width: 80px;
             text-align: center;
             margin-left: 5px;
             margin-right: 20px;
@@ -139,7 +143,7 @@
 
         peerConnection.onconnectionstatechange = (event) => {
 
-            document.getElementById("status").innerHTML = peerConnection.connectionState;
+            document.getElementById("status").value = peerConnection.connectionState;
 
             switch (peerConnection.connectionState) {
             case 'new':
@@ -335,10 +339,12 @@
                 <button id="start" onclick="start()">Start</button>
 
             </fieldset>
+        </div>
 
-            <div>
-                WebRTC Status: <span id="status">not connected</span>
-            </div>
+        <p></p>
+
+        <div>
+            WebRTC Status: <input type="text" class="value" id="status" value="not connected" />
         </div>
 
         <p></p>
@@ -352,7 +358,6 @@
             Complete Message Set: <input class="value" type="text" id="completeSet" value="0" /> 
             Incomplete Message Set: <input class="value" type="text" id="incompleteSet" value="0" /> 
             Max Streak of Missed Message: <input class="value" type="text" id="maxStreak" value="0" />
-
         </div>
 
         <h2>Debug Logs</h2>

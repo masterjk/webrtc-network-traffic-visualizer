@@ -99,7 +99,7 @@
 
         function start() {
             if (!running) {
-                debug && log("Test starting...");
+                debug && log("Test started");
                 if (controlChannel) {
                     var rateLimit = parseInt(document.getElementById("rateLimit").value, 10);
                     var bytesPerMessage = parseInt(document.getElementById("bytesPerMessage").value, 10);
@@ -116,8 +116,18 @@
                 }
                 running = true;
                 document.getElementById("start").classList.add('disabled');
+                document.getElementById("stop").classList.remove('disabled');
             } else {
                 alert('Please reload page to start a new test')
+            }
+        }
+
+        function stop() {
+            if (running) {
+                this.peerConnection.close();
+                debug && log('Test stopped')
+            } else {
+                alert('Test is not running yet')
             }
         }
 
@@ -142,19 +152,7 @@
         ]});
 
         peerConnection.onconnectionstatechange = (event) => {
-
             document.getElementById("status").value = peerConnection.connectionState;
-
-            switch (peerConnection.connectionState) {
-            case 'new':
-                break;
-            case 'connecting':
-                let iceTransport = peerConnection.sctp?.transport.iceTransport;
-                if (iceTransport) {
-                    // iceTransport.onselectedcandidatepairchange = 
-                }
-                break;
-            }
             debug && log("onconnectionstatechange " + peerConnection.connectionState);
         }
 
@@ -278,6 +276,19 @@
 
             updateBandwidth();
         }
+
+        function copyClipboard() {
+            // works only on HTTPS or localhost
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(document.getElementById("logs").innerHTML).then(() => {
+                    alert('Content copied to clipboard');
+                },() => {
+                    alert('Failed to copy to clipboard, make sure this page is loaded via HTTPS or localhost');
+                });
+            } else {
+                alert('Clipboard is accessible only if page is loaded via HTTPS or localhost');
+            }
+        }
     </script>
 </head>
 
@@ -337,7 +348,7 @@
                 (<span id="bitsPerSecond">-</span>)
 
                 <button id="start" onclick="start()">Start</button>
-
+                <button id="stop" class='disabled' onclick="stop()">Stop</button>
             </fieldset>
         </div>
 
@@ -360,7 +371,7 @@
             Max Streak of Missed Message: <input class="value" type="text" id="maxStreak" value="0" />
         </div>
 
-        <h2>Debug Logs</h2>
+        <h2>Debug Logs <button onclick="copyClipboard()">Copy Logs to Clipboard</button></h2>
         <textarea id="logs" cols="160" rows="20"></textarea>
     </div>
 

@@ -1,6 +1,69 @@
 <!DOCTYPE html>
 <head>
-    <title>Test Page</title>
+    <title>WebRTC DataChannel Message Loss Visualizer</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
+    <style>
+        * {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        textarea {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        select {
+            min-width: 80px;
+        }
+        
+        label {
+            margin-left: 10px;
+        }
+
+        fieldset {
+            display: inline-block;
+        }
+
+        button {
+            margin-left: 25px;
+            padding: 10px;
+            
+            background-color: #0095ff;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            box-shadow: rgba(255, 255, 255, .4) 0 1px 0 0 inset;
+            box-sizing: border-box;
+            color: #fff;
+            cursor: pointer;
+            display: inline-block;
+            font-family: -apple-system,system-ui,"Segoe UI","Liberation Sans",sans-serif;
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.15385;
+            margin: 0;
+            outline: none;
+            padding: 8px .8em;
+            position: relative;
+            text-align: center;
+            text-decoration: none;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            vertical-align: baseline;
+            white-space: nowrap;
+        }
+
+        button.disabled {
+            background-color: gray;
+        }
+
+        input.value {
+            width: 60px;
+            text-align: center;
+            margin-left: 5px;
+            margin-right: 20px;
+        }
+
+    </style>
     <script>
 
         ////////////////////////////////////////////////////////////
@@ -11,6 +74,10 @@
         ////////////////////////////////////////////////////////////
         var controlChannel;
         var payloadChannel;
+
+        var completeSet = 0;
+        var incompleteSet = 0
+        var maxStreak = 0;
 
         var running = false;
 
@@ -33,11 +100,15 @@
                     var rateLimit = parseInt(document.getElementById("rateLimit").value, 10);
                     var bytesPerMessage = parseInt(document.getElementById("bytesPerMessage").value, 10);
 
-                    controlChannel.send(JSON.stringify({
+                    var jsonString = JSON.stringify({
                         limit: rateLimit,
                         burst: parseInt(document.getElementById("rateLimitBurst").value, 10),
                         bytes: bytesPerMessage,
-                        action: "start"}));
+                        action: "start"});
+                    controlChannel.send(jsonString);
+
+                    debug && log(`User Agent: ${window.navigator.userAgent}`)
+                    debug && log(`JSON Payload: ${jsonString}`)
                 }
                 running = true;
                 document.getElementById("start").classList.add('disabled');
@@ -144,11 +215,37 @@
                 }
 
                 if (missingMessages.length == 0) {
-                    debug && log(`[100%] COMPLETE MESSAGES`);
+                    completeSet++;
                 } else {
-                    let pct = (missingMessages.length) / (maxRows * maxColumns) * 100;
-                    debug && log(`[$(pct)%] Missing messages: ${missingMessages}`)
+                    incompleteSet++;
+
+                    let pct = (((maxRows * maxColumns) - (missingMessages.length)) / (maxRows * maxColumns)) * 100;
+
+                    // Determine streaks
+                    let streaks = [];
+                    let streak = 1;
+                    for (i=1; i<missingMessages.length; i++) {
+                        if (missingMessages[i-1] == missingMessages[i]-1) {
+                            streak++;
+                        } else {
+                            if (maxStreak < streak) {
+                                maxStreak = streak;
+                            }
+                            streaks.push(streak);
+                            streak=1;
+                        }
+                    }
+                    if (maxStreak < streak) {
+                        maxStreak = streak;
+                    }
+                    streaks.push(streak);
+
+                    debug && log(`[${pct}%] INCOMPLETE - Missing (Total: ${missingMessages.length}); Streaks: [${streaks}]; IDs: [${missingMessages}]`)
                 }
+
+                document.getElementById('completeSet').value = completeSet;
+                document.getElementById('incompleteSet').value = incompleteSet;
+                document.getElementById('maxStreak').value = maxStreak;
 
                 // Change color
                 colorIndex++;
@@ -156,7 +253,7 @@
                     colorIndex = 0;
                 }
             }
-            document.getElementById("lastMessage").innerHTML = obj.counter;
+            document.getElementById("lastMessage").value = obj.counter;
         }
 
         function initializeContainer() {
@@ -177,92 +274,7 @@
 
             updateBandwidth();
         }
-
-        function copyClipboard() {
-            var logs = document.getElementById('logs').innerHTML;
-            navigator.clipboard.writeText(logs)
-                .then(() => {
-                    alert('Logs copied to clipboard');
-                })
-                .catch(err => {
-                    alert('Error in copying text: ', err);
-                });
-        }
-
     </script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
-    <style>
-        * {
-            font-family: 'Raleway', sans-serif;
-        }
-
-        table#stats {
-            font-weight: bold;
-        }
-
-        textarea {
-            font-family: 'Courier New', Courier, monospace;
-        }
-
-        select {
-            min-width: 80px;
-        }
-        
-        label {
-            margin-left: 10px;
-        }
-
-        fieldset {
-            display: inline-block;
-        }
-
-        button {
-            margin-left: 25px;
-            padding: 10px;
-            
-            background-color: #0095ff;
-            border: 1px solid transparent;
-            border-radius: 3px;
-            box-shadow: rgba(255, 255, 255, .4) 0 1px 0 0 inset;
-            box-sizing: border-box;
-            color: #fff;
-            cursor: pointer;
-            display: inline-block;
-            font-family: -apple-system,system-ui,"Segoe UI","Liberation Sans",sans-serif;
-            font-size: 13px;
-            font-weight: 400;
-            line-height: 1.15385;
-            margin: 0;
-            outline: none;
-            padding: 8px .8em;
-            position: relative;
-            text-align: center;
-            text-decoration: none;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-            vertical-align: baseline;
-            white-space: nowrap;
-        }
-
-        button:hover,
-            button:focus {
-            background-color: #07c;
-        }
-
-        button:focus {
-            box-shadow: 0 0 0 4px rgba(0, 149, 255, .15);
-        }
-
-        button:active {
-            background-color: #0064bd;
-            box-shadow: none;
-        }
-
-        button.disabled {
-            background-color: gray;
-        }
-</style>
 </head>
 
 <body>
@@ -324,19 +336,26 @@
 
             </fieldset>
 
-            <table cellpadding="5" id="stats">
-                <tr>
-                    <td>WebRTC Status:</td><td><span id="status">not connected</span></td>
-                    <td>Last Message Received:</td><td><span id="lastMessage">0</span></td>
-                </tr>
-            </table>            
+            <div>
+                WebRTC Status: <span id="status">not connected</span>
+            </div>
         </div>
 
         <p></p>
 
         <table id="container" border="1" cellpadding="3" cellspacing="0"></table>
 
-        <h2>Debug Logs <button onclick="copyClipboard()">Copy Logs</button></h2>
+        <p></p>
+
+        <div>
+            Last Message Received: <input class="value" type="text" id="lastMessage" value="0" />
+            Complete Message Set: <input class="value" type="text" id="completeSet" value="0" /> 
+            Incomplete Message Set: <input class="value" type="text" id="incompleteSet" value="0" /> 
+            Max Streak of Missed Message: <input class="value" type="text" id="maxStreak" value="0" />
+
+        </div>
+
+        <h2>Debug Logs</h2>
         <textarea id="logs" cols="160" rows="20"></textarea>
     </div>
 

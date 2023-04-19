@@ -1,3 +1,4 @@
+[![Docker Image CI](https://github.com/masterjk/webrtc-network-traffic-visualizer/actions/workflows/docker-image.yml/badge.svg)](https://github.com/masterjk/webrtc-network-traffic-visualizer/actions/workflows/docker-image.yml)
 
 # webrtc-network-traffic-visualizer
 

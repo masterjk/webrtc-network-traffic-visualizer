@@ -126,6 +126,15 @@
             if (running) {
                 this.peerConnection.close();
                 debug && log('Test stopped')
+                debug && log(`Configuration:`);
+                debug && log(`- Message/Sec: ${document.getElementById('rateLimit').value}`);
+                debug && log(`- Burst Rate: ${document.getElementById('rateLimitBurst').value}`);
+                debug && log(`- Bytes/Message: ${document.getElementById('bytesPerMessage').value}`);
+                debug && log(`Summary:`);
+                debug && log(`- Last Message Received: ${document.getElementById('lastMessage').value}`);
+                debug && log(`- Complete Message Set: ${document.getElementById('completeSet').value}`);
+                debug && log(`- Incomplete Message Set: ${document.getElementById('incompleteSet').value}`);
+                debug && log(`- Max Stream of Missed Messages: ${document.getElementById('maxStreak').value}`);
             } else {
                 alert('Test is not running yet')
             }

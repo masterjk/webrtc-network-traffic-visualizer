@@ -12,6 +12,8 @@
         var controlChannel;
         var payloadChannel;
 
+        var running = false;
+
         var counter = 0;
 
         var colors = ["green", "yellow", "red", "blue", "orange", "purple", "pink", "brown", "black"];
@@ -21,24 +23,43 @@
 
         function log(message) {
             let date = new Date().toISOString();
-            document.getElementById("logs").innerHTML += `[${date}] ${message}\n`;
-            console.log(`[${date}] ${message}`);
+            document.getElementById('logs').innerHTML += `[${date}] ${message}\n`;
         }
 
         function start() {
-            debug && log("start");
-            if (controlChannel) {
-                var rateLimit = parseInt(document.getElementById("rateLimit").value, 10);
-                var bytesPerMessage = parseInt(document.getElementById("bytesPerMessage").value, 10);
+            if (!running) {
+                debug && log("Test starting...");
+                if (controlChannel) {
+                    var rateLimit = parseInt(document.getElementById("rateLimit").value, 10);
+                    var bytesPerMessage = parseInt(document.getElementById("bytesPerMessage").value, 10);
 
-                controlChannel.send(JSON.stringify({
-                    limit: rateLimit,
-                    burst: parseInt(document.getElementById("rateLimitBurst").value, 10),
-                    bytes: bytesPerMessage,
-                    action: "start"}));
-
-                document.getElementById("bitsPerSecond").value = rateLimit * bytesPerMessage * 8;
+                    controlChannel.send(JSON.stringify({
+                        limit: rateLimit,
+                        burst: parseInt(document.getElementById("rateLimitBurst").value, 10),
+                        bytes: bytesPerMessage,
+                        action: "start"}));
+                }
+                running = true;
+                document.getElementById("start").classList.add('disabled');
+            } else {
+                alert('Please reload page to start a new test')
             }
+        }
+
+        function getReadableFileSizeString(fileSizeInBytes) {
+            var i = -1;
+            var byteUnits = [' kbps', ' mbps', ' gbps', ' tbps', ' pbps', ' ebps', 'zbps', ' ybps'];
+            do {
+                fileSizeInBytes = fileSizeInBytes / 1024;
+                i++;
+            } while (fileSizeInBytes > 1024);
+            return Math.max(fileSizeInBytes, 0.1).toFixed(1) + byteUnits[i];
+        };
+
+        function updateBandwidth() {
+            var rateLimit = parseInt(document.getElementById("rateLimit").value, 10);
+            var bytesPerMessage = parseInt(document.getElementById("bytesPerMessage").value, 10);
+            document.getElementById("bitsPerSecond").innerHTML = getReadableFileSizeString(rateLimit * bytesPerMessage * 8);
         }
 
         window.peerConnection = peerConnection = new RTCPeerConnection({ iceServers: [{
@@ -47,7 +68,7 @@
 
         peerConnection.onconnectionstatechange = (event) => {
 
-            document.getElementById("status").value = peerConnection.connectionState;
+            document.getElementById("status").innerHTML = peerConnection.connectionState;
 
             switch (peerConnection.connectionState) {
             case 'new':
@@ -75,7 +96,7 @@
                 }).then((response) => {
                     if (response.ok) {
                         response.json().then((json) => {
-                            debug && log("SDP Answer:\n\n" + json.sessionDescription.sdp);
+                            debug && log("SDP Answer: " + json.sessionDescription.sdp.replace(/(\r\n|\n|\r)/gm, ""));
                             let sdpAnswer = new RTCSessionDescription(json.sessionDescription);
                             peerConnection.setRemoteDescription(sdpAnswer);
                         })
@@ -88,7 +109,7 @@
 
         peerConnection.onnegotiationneeded = (event) => {
             peerConnection.createOffer().then(function(desc) {
-                debug && log("SDP Offer:\n\n" + desc.sdp)
+                debug && log("SDP Offer: " + desc.sdp.replace(/(\r\n|\n|\r)/gm, ""))
                 peerConnection.setLocalDescription(desc)
             }
         )};
@@ -97,11 +118,11 @@
         payloadChannel = peerConnection.createDataChannel('payload', { ordered: false, maxRetransmits: 0 });
 
         controlChannel.onopen = () => {
-            debug && log("[control] Data channel opened")
+            debug && log("Data channel opened: control")
         };
 
         payloadChannel.onopen = () => {
-            debug && log("[payload] Data channel opened")
+            debug && log("Data channel opened: payload")
         };
 
         payloadChannel.onmessage = (event) => {
@@ -109,12 +130,33 @@
             let id = "id_" + obj.counter % (maxColumns * maxRows);
             document.getElementById(id).style.backgroundColor = colors[colorIndex];
             if (obj.counter % (maxColumns * maxRows) == (maxColumns * maxRows) - 1) {
+
+                // Analyze the result
+                let tmp = 0;
+                let missingMessages = [];
+                for (i=0; i<maxRows; i++) {
+                    for (j=0; j<maxColumns; j++) {
+                        if (document.getElementById('id_' + tmp).style.backgroundColor != colors[colorIndex]) {
+                            missingMessages.push(tmp);
+                        }
+                        tmp++;
+                    }
+                }
+
+                if (missingMessages.length == 0) {
+                    debug && log(`[100%] COMPLETE MESSAGES`);
+                } else {
+                    let pct = (missingMessages.length) / (maxRows * maxColumns) * 100;
+                    debug && log(`[$(pct)%] Missing messages: ${missingMessages}`)
+                }
+
+                // Change color
                 colorIndex++;
                 if (colorIndex >= colors.length) {
                     colorIndex = 0;
                 }
             }
-            document.getElementById("lastMessage").value = obj.counter;
+            document.getElementById("lastMessage").innerHTML = obj.counter;
         }
 
         function initializeContainer() {
@@ -130,53 +172,172 @@
                 }
                 row += "</tr>";
 
-                document.getElementById("body").innerHTML += row;
+                document.getElementById("container").innerHTML += row;
             }
+
+            updateBandwidth();
+        }
+
+        function copyClipboard() {
+            var logs = document.getElementById('logs').innerHTML;
+            navigator.clipboard.writeText(logs)
+                .then(() => {
+                    alert('Logs copied to clipboard');
+                })
+                .catch(err => {
+                    alert('Error in copying text: ', err);
+                });
         }
 
     </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
     <style>
-        body {
+        * {
             font-family: 'Raleway', sans-serif;
         }
 
-        span#status {
+        table#stats {
             font-weight: bold;
         }
 
-        input.readonly {
-            background-color: #eee;
+        textarea {
+            font-family: 'Courier New', Courier, monospace;
         }
-    </style>
+
+        select {
+            min-width: 80px;
+        }
+        
+        label {
+            margin-left: 10px;
+        }
+
+        fieldset {
+            display: inline-block;
+        }
+
+        button {
+            margin-left: 25px;
+            padding: 10px;
+            
+            background-color: #0095ff;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            box-shadow: rgba(255, 255, 255, .4) 0 1px 0 0 inset;
+            box-sizing: border-box;
+            color: #fff;
+            cursor: pointer;
+            display: inline-block;
+            font-family: -apple-system,system-ui,"Segoe UI","Liberation Sans",sans-serif;
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.15385;
+            margin: 0;
+            outline: none;
+            padding: 8px .8em;
+            position: relative;
+            text-align: center;
+            text-decoration: none;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            vertical-align: baseline;
+            white-space: nowrap;
+        }
+
+        button:hover,
+            button:focus {
+            background-color: #07c;
+        }
+
+        button:focus {
+            box-shadow: 0 0 0 4px rgba(0, 149, 255, .15);
+        }
+
+        button:active {
+            background-color: #0064bd;
+            box-shadow: none;
+        }
+
+        button.disabled {
+            background-color: gray;
+        }
+</style>
 </head>
 
 <body>
 
     <div align="center">
 
-        <h1>WebRTC Network Traffic Visualizer</h1>
+        <h1>WebRTC DataChannel Message Loss Visualizer</h1>
 
         <div>
-            Message/Second: <input type="text" id="rateLimit" value="1000" />
-            Burst: <input type="text" id="rateLimitBurst" value="1" />
-            Bytes: <input type="text" id="bytesPerMessage" value="1024" />
-            <button onclick="start()">Start</button>
+            <fieldset>
+                <legend>Settings</legend>
+
+                <label for="rateLimit">Message/Sec:</label>
+                <select id="rateLimit" onchange="updateBandwidth()">
+                    <option>125</option>
+                    <option>250</option>
+                    <option>500</option>
+                    <option>750</option>
+                    <option selected>1000</option>
+                    <option>1250</option>
+                    <option>1500</option>
+                    <option>2000</option>
+                    <option>2500</option>
+                </select>
+
+                <label for="rateLimitBurst">Burst Rate:</label>
+                <select id="rateLimitBurst">
+                    <option>1</option>
+                    <option>2</option>
+                    <option>5</option>
+                    <option>10</option>
+                    <option>25</option>
+                    <option>50</option>
+                    <option>100</option>
+                    <option>150</option>
+                    <option>200</option>
+                    <option>250</option>
+                    <option>500</option>
+                    <option>1000</option>
+                    <option>2500</option>
+                    <option>5000</option>
+                    <option>7500</option>
+                    <option>10000</option>
+                </select>
+
+                <label for="bytesPerMessage">Bytes/Message</label>
+                <select id="bytesPerMessage" onchange="updateBandwidth()">
+                    <option>256</option>
+                    <option>512</option>
+                    <option selected>1024</option>
+                    <option>1536</option>
+                    <option>2048</option>
+                    <option>3072</option>
+                    <option>4096</option>
+                </select>
+                (<span id="bitsPerSecond">-</span>)
+
+                <button id="start" onclick="start()">Start</button>
+
+            </fieldset>
+
+            <table cellpadding="5" id="stats">
+                <tr>
+                    <td>WebRTC Status:</td><td><span id="status">not connected</span></td>
+                    <td>Last Message Received:</td><td><span id="lastMessage">0</span></td>
+                </tr>
+            </table>            
         </div>
 
         <p></p>
 
-        <table id="body" border="1" cellpadding="5" cellspacing="0"></table>
+        <table id="container" border="1" cellpadding="3" cellspacing="0"></table>
 
-        <p></p>
-
-        <div>
-            WebRTC Status: <input type="text" id="status" value="Not Connected" readonly class="readonly" />
-            Last Message Received: <input type="text" id="lastMessage" value="0" readonly class="readonly" />
-            Bits per Second: <input type="text" id="bitsPerSecond" value="0" readonly class="readonly" />
-        </div>
-
-        <textarea id="logs" cols="200" rows="40"></textarea>
+        <h2>Debug Logs <button onclick="copyClipboard()">Copy Logs</button></h2>
+        <textarea id="logs" cols="160" rows="20"></textarea>
     </div>
 
     <script>

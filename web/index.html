@@ -82,7 +82,7 @@
         var completeSet = 0;
         var incompleteSet = 0
         var maxStreak = 0;
-
+        var streaksMap = new Map();
         var running = false;
 
         var counter = 0;
@@ -135,6 +135,12 @@
                 debug && log(`- Complete Message Set: ${document.getElementById('completeSet').value}`);
                 debug && log(`- Incomplete Message Set: ${document.getElementById('incompleteSet').value}`);
                 debug && log(`- Max Stream of Missed Messages: ${document.getElementById('maxStreak').value}`);
+                debug && log(``);
+                debug && log(`Streak Histogram:`);
+                for (const key of Array.from(streaksMap.keys()).sort()) {
+                    debug && log(`- ${key}: ${streaksMap.get(key)} events`);
+                }
+
             } else {
                 alert('Test is not running yet')
             }
@@ -154,6 +160,14 @@
             var rateLimit = parseInt(document.getElementById("rateLimit").value, 10);
             var bytesPerMessage = parseInt(document.getElementById("bytesPerMessage").value, 10);
             document.getElementById("bitsPerSecond").innerHTML = getReadableFileSizeString(rateLimit * bytesPerMessage * 8);
+        }
+
+        function incrementStreak(count) {
+            if (streaksMap.get(count)) {
+                streaksMap.set(count, streaksMap.get(count)+1);
+            } else {
+                streaksMap.set(count, 1);
+            }
         }
 
         window.peerConnection = peerConnection = new RTCPeerConnection({ iceServers: [{
@@ -243,6 +257,7 @@
                                 maxStreak = streak;
                             }
                             streaks.push(streak);
+                            incrementStreak(streak);
                             streak=1;
                         }
                     }
@@ -250,6 +265,7 @@
                         maxStreak = streak;
                     }
                     streaks.push(streak);
+                    incrementStreak(streak);
 
                     debug && log(`[${pct}%] INCOMPLETE - Missing (Total: ${missingMessages.length}); Streaks: [${streaks}]; IDs: [${missingMessages}]`)
                 }

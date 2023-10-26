@@ -224,6 +224,9 @@
         };
 
         payloadChannel.onmessage = (event) => {
+
+            console.log("Received payload size: " + enc.decode(event.data).length);
+
             let obj = JSON.parse(enc.decode(event.data));
             let id = "id_" + obj.counter % (maxColumns * maxRows);
             document.getElementById(id).style.backgroundColor = colors[colorIndex];
@@ -368,11 +371,15 @@
                     <option>256</option>
                     <option>512</option>
                     <option>1024</option>
+                    <option>1200</option>
                     <option>1536</option>
                     <option>2048</option>
                     <option>3072</option>
                     <option>4096</option>
-                    <option selected>8192</option>
+                    <option>8192</option>
+                    <option>16384</option>
+                    <option>32768</option>
+                    <option>65535</option>
                 </select>
                 (<span id="bitsPerSecond">-</span>)
 

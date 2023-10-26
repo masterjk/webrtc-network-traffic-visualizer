@@ -3,6 +3,8 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"sync/atomic"
 	"time"
 
@@ -19,8 +21,8 @@ type Command struct {
 }
 
 type Payload struct {
-	Counter int    `json:"counter"`
-	Data    []byte `json:"data"`
+	Counter string `json:"counter"`
+	Data    string `json:"data"`
 }
 
 type Worker struct {
@@ -43,21 +45,31 @@ func (w *Worker) Start(bytesPerMessage int) {
 
 	w.counter = 0
 
-	data := make([]byte, bytesPerMessage)
-	for i := 0; i < bytesPerMessage; i++ {
-		data[i] = 0
+	// Compute the exact payload size to be sent
+	b, _ := json.Marshal(&Payload{
+		Counter: fmt.Sprintf("%10d", 1),
+	})
+	payloadSize := bytesPerMessage - len(b)
+
+	data := ""
+	for i := 0; i < payloadSize; i++ {
+		data += fmt.Sprintf("%d", rand.Intn(10))
 	}
 
 	log.Info().Int("bytesPerMessage", bytesPerMessage).Msg("Starting worker")
 
 	for w.running.Load() {
 		payload := &Payload{
-			Counter: w.counter,
+			Counter: fmt.Sprintf("%10d", w.counter),
 			Data:    data,
 		}
 		w.counter++
 
 		if buf, err := json.Marshal(payload); err == nil {
+
+			// fmt.Printf("Sending Payload Size: %d\n", len(buf))
+			// fmt.Println(string(buf))
+
 			if err2 := w.dataChannelPaylod.Send(buf); err2 != nil {
 				log.Error().Err(err2).Msg("Error sending payload, stopping worker")
 				w.running.Store(false)

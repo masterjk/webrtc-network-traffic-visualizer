@@ -14,7 +14,7 @@
         select {
             min-width: 80px;
         }
-        
+
         label {
             margin-left: 10px;
         }
@@ -30,7 +30,7 @@
         button {
             margin-left: 25px;
             padding: 10px;
-            
+
             background-color: #0095ff;
             border: 1px solid transparent;
             border-radius: 3px;
@@ -107,7 +107,7 @@
                     var jsonString = JSON.stringify({
                         limit: rateLimit,
                         burst: parseInt(document.getElementById("rateLimitBurst").value, 10),
-                        bytes: bytesPerMessage,
+                        bytesPerMessage: bytesPerMessage,
                         action: "start"});
                     controlChannel.send(jsonString);
 
@@ -331,11 +331,12 @@
 
                 <label for="rateLimit">Message/Sec:</label>
                 <select id="rateLimit" onchange="updateBandwidth()">
+                    <option selected>1</option>
                     <option>125</option>
                     <option>250</option>
                     <option>500</option>
                     <option>750</option>
-                    <option selected>1000</option>
+                    <option>1000</option>
                     <option>1250</option>
                     <option>1500</option>
                     <option>2000</option>
@@ -366,11 +367,12 @@
                 <select id="bytesPerMessage" onchange="updateBandwidth()">
                     <option>256</option>
                     <option>512</option>
-                    <option selected>1024</option>
+                    <option>1024</option>
                     <option>1536</option>
                     <option>2048</option>
                     <option>3072</option>
                     <option>4096</option>
+                    <option selected>8192</option>
                 </select>
                 (<span id="bitsPerSecond">-</span>)
 
@@ -393,8 +395,8 @@
 
         <div>
             Last Message Received: <input class="value" type="text" id="lastMessage" value="0" />
-            Complete Message Set: <input class="value" type="text" id="completeSet" value="0" /> 
-            Incomplete Message Set: <input class="value" type="text" id="incompleteSet" value="0" /> 
+            Complete Message Set: <input class="value" type="text" id="completeSet" value="0" />
+            Incomplete Message Set: <input class="value" type="text" id="incompleteSet" value="0" />
             Max Streak of Missed Message: <input class="value" type="text" id="maxStreak" value="0" />
         </div>
 
